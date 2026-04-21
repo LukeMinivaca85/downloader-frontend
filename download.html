@@ -1,0 +1,96 @@
+<script>
+
+function formatBytes(bytes){
+const units=["B","KB","MB","GB"]
+let i=0
+while(bytes>=1024 && i<units.length-1){
+bytes/=1024;i++
+}
+return bytes.toFixed(2)+" "+units[i]
+}
+
+const id = window.location.pathname.split("/").pop()
+
+async function startDownload(){
+
+try{
+
+const res = await fetch("/download-file/"+id)
+
+if(!res.ok){
+alert("Erro no download")
+return
+}
+
+const total = res.headers.get("content-length")
+
+// 🔥 fallback se não tiver tamanho
+if(!total){
+window.location.href = "/download-file/"+id
+return
+}
+
+const reader = res.body.getReader()
+
+// 🔥 verifica suporte
+if(!window.showSaveFilePicker){
+window.location.href = "/download-file/"+id
+return
+}
+
+const fileHandle = await window.showSaveFilePicker({
+suggestedName:"lukintosh.bin"
+})
+
+const writable = await fileHandle.createWritable()
+
+let received=0
+let start=Date.now()
+
+while(true){
+
+const {done,value} = await reader.read()
+if(done) break
+
+await writable.write(value)
+
+received += value.length
+
+let percent = (received/total)*100
+document.getElementById("bar").style.width = percent+"%"
+
+let elapsed=(Date.now()-start)/1000
+let speed=received/elapsed
+
+document.getElementById("stats").innerText =
+formatBytes(received)+" • "+formatBytes(speed)+"/s"
+
+}
+
+await writable.close()
+
+document.getElementById("stats").innerText="Download completo 🚀"
+
+}catch(e){
+
+// 🔥 fallback universal
+window.location.href = "/download-file/"+id
+
+}
+
+}
+
+// 🎬 slideshow suave
+let slides = document.querySelectorAll(".slide")
+let index = 0
+
+function showSlide(){
+slides.forEach(s=>s.style.opacity=0)
+slides[index].style.opacity=1
+index = (index+1)%slides.length
+}
+
+setInterval(showSlide,4000)
+showSlide()
+
+</script>
